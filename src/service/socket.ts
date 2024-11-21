@@ -5,6 +5,15 @@ import { KeysAlert, TypesAlert } from '../types/Socket';
 import DAO from '../DAO';
 import { jwtDecode } from 'jwt-decode';
 
+interface User {
+  token: string | null;
+  cod_usuario: string | null;
+  matricula: string | null;
+  user: string | null;
+  nome: string | null;
+  email: string | null;
+  cod_filial: string | null;
+}
 interface DadosSocket<T> {
   data: T;
 }
@@ -17,10 +26,12 @@ export class ServerSocket {
   };
 
   public users: { [uid: string]: string };
+  public usersData: User[];
 
   constructor(server: HttpServer) {
     ServerSocket.instance = this;
     this.users = {};
+    this.usersData = [];
     this.io = new Server(server, {
       serveClient: false,
       pingInterval: 10000,
@@ -76,26 +87,32 @@ export class ServerSocket {
   private sendMessage = (name: string, users: string[], payload?: Object) => {
     users.forEach((id) => {
       if (payload) {
-        this.io.to(id).emit(name, payload);
+        this.io.emit(name, payload);
       } else {
-        this.io.to(id).emit(name);
+        this.io.emit(name);
       }
     });
   };
 
+  private filterUser = (token: string): User => {
+    return this.usersData.find((user) => user.token === token) as User;
+  };
+
   private startListeners = (socket: Socket) => {
     const token = socket.handshake.auth.token;
+    const user = socket.handshake.auth.user;
 
     if (!this.validateToken(token)) {
       this.logError('Invalid token, disconnecting socket:', token);
       return socket.disconnect();
     }
 
-    console.info('Socket handshake received:', socket.id);
-
     socket.on(
       'handshake',
       (callback: (uid: string, users: string[]) => void) => {
+        this.io.emit('on', 'asdasdas', () => {
+          console.log('data');
+        });
         this.safeExecute(() => {
           const reconnected = Object.values(this.users).includes(token);
 
@@ -110,16 +127,14 @@ export class ServerSocket {
             }
           }
 
+          this.usersData.push(user);
           const uid = uuidv4();
           this.users[uid] = token;
           const users = Object.values(this.users);
           callback(uid, users);
 
-          this.sendMessage(
-            'user_connected',
-            users.filter((id) => id !== token),
-            users
-          );
+          this.sendMessage('user_connected', users);
+          this.sendMessage('on', users);
         }, 'Error during handshake');
       }
     );
@@ -143,10 +158,14 @@ export class ServerSocket {
     });
   };
 
-  public sendAlert = async (key: TypesAlert, payload: DadosSocket<any>) => {
+  public sendAlert = async (key: TypesAlert, payload?: DadosSocket<any>) => {
     this.safeExecute(async () => {
-      let usersAlert: number[] = [];
-      this.io.emit(key, { ...payload, USERS: usersAlert });
+      let usersAlert = this.users;
+      this.io.emit(key, {
+        ...payload,
+        users: usersAlert,
+      });
+      console.info('Alert', key);
     }, `Error sending alert for key: ${key}`);
   };
 }

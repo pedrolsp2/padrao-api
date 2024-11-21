@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import middleware from '../../middleware/modules';
-import testeController from '../../controller/teste/testeController';
+import homeController from '../../controller/home/homeController';
 
 const router = Router();
 
-router.get('/teste', testeController.teste);
+router.get('/', homeController.welcom);
 
 export default router;

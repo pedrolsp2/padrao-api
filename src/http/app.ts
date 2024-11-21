@@ -8,6 +8,10 @@ import http from 'http';
 import routes from '../routes';
 import '../config';
 import debug from 'debug';
+import dotenv from 'dotenv';
+
+const env = process.env.NODE_ENV || 'development';
+dotenv.config({ path: `.env.${env}` });
 
 const app: Application = express();
 const server = http.createServer(app);
@@ -61,6 +65,7 @@ app.use((req: any, res: any, next: any) => {
 });
 
 const port = normalizePort(process.env.PORT || '3000');
+console.log('Rodando na porta', port);
 app.set('port', port);
 
 server.listen(port);
